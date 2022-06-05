@@ -48,20 +48,6 @@ pub fn create(image_hash: &str, args: Vec<String>) -> Result<String, std::io::Er
     Ok(str_id)
 }
 
-pub fn attach(id: &str) -> Result<(), std::io::Error> {
-    println!("Attaching to docker container");
-
-    Command::new("docker")
-        .stderr(Stdio::inherit())
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .arg("rm")
-        .arg(id)
-        .status()?;
-
-    Ok(())
-}
-
 pub fn start(id: &str) -> Result<(), std::io::Error> {
     println!("Starting docker container");
 
