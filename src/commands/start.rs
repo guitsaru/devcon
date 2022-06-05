@@ -1,3 +1,4 @@
+use crate::docker;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -6,8 +7,15 @@ use crate::devcontainers::config::Config;
 pub fn run(dir: &Option<String>) -> Result<(), std::io::Error> {
     let directory = get_project_directory(dir)?;
     let config = get_configuration(&directory)?;
+    let dockerfile = directory
+        .join(".devcontainer")
+        .join(config.dockerfile().unwrap());
 
-    println!("{:?}", config);
+    let hash = docker::build(dockerfile.as_ref(), config.build_args())?;
+    let id = docker::create(hash.as_ref(), config.create_args(directory.as_ref()))?;
+    println!("ID: {}", id);
+    docker::start(id.as_ref())?;
+    docker::stop(id.as_ref())?;
 
     Ok(())
 }

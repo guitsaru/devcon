@@ -2,8 +2,9 @@ use clap::AppSettings;
 use clap::Parser;
 use clap::Subcommand;
 
-pub mod commands;
-pub mod devcontainers;
+pub(crate) mod commands;
+pub(crate) mod devcontainers;
+pub(crate) mod docker;
 
 #[derive(Parser)]
 #[clap(setting(AppSettings::ArgRequiredElseHelp))]
