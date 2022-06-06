@@ -58,7 +58,7 @@ pub fn stop(name: &str) -> std::io::Result<()> {
         .arg("compose")
         .arg("-p")
         .arg(name)
-        .arg("stop")
+        .arg("down")
         .status()?;
 
     Ok(())
@@ -100,6 +100,33 @@ pub fn cp(name: &str, service: &str, source: &Path, destination: &str) -> std::i
         .arg("cp")
         .arg(source)
         .arg(format!("{}:{}", service, destination))
+        .status()?;
+
+    Ok(())
+}
+
+pub fn exec(
+    name: &str,
+    service: &str,
+    cmd: &str,
+    user: &str,
+    workspace_folder: &str,
+) -> std::io::Result<()> {
+    Command::new("docker")
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .arg("compose")
+        .arg("-p")
+        .arg(name)
+        .arg("exec")
+        .arg("-u")
+        .arg(user)
+        .arg("-w")
+        .arg(workspace_folder)
+        .arg(service)
+        .arg("sh")
+        .arg("-c")
+        .arg(cmd)
         .status()?;
 
     Ok(())

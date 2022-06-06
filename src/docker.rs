@@ -121,3 +121,16 @@ pub fn cp(name: &str, source: &Path, destination: &str) -> std::io::Result<()> {
 
     Ok(())
 }
+
+pub fn exec(name: &str, cmd: &str) -> std::io::Result<()> {
+    Command::new("docker")
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .arg("exec")
+        .arg(name)
+        .arg("sh")
+        .arg("-c")
+        .arg(cmd)
+        .status()?;
+    Ok(())
+}

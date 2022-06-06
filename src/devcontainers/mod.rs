@@ -42,6 +42,14 @@ impl Devcontainer {
             self.create()?;
             self.post_create()?;
 
+            docker_compose::attach(
+                &name,
+                self.config.service.clone().unwrap().as_str(),
+                self.config.remote_user.clone().as_str(),
+                self.config.workspace_folder.clone().as_str(),
+                "zsh",
+            )?;
+
             if self.config.should_shutdown() {
                 docker_compose::stop(&name)?;
             }
@@ -70,13 +78,6 @@ impl Devcontainer {
             )?;
 
             docker_compose::start(name.as_str(), &docker_compose_file)?;
-            docker_compose::attach(
-                &name,
-                self.config.service.clone().unwrap().as_str(),
-                self.config.remote_user.clone().as_str(),
-                self.config.workspace_folder.clone().as_str(),
-                "zsh",
-            )?;
             Ok("".to_string())
         } else {
             Ok("".to_string())
@@ -85,6 +86,48 @@ impl Devcontainer {
 
     fn post_create(&self) -> std::io::Result<()> {
         self.copy_gitconfig()?;
+
+        if let Some(command) = self.config.on_create_command.clone() {
+            let name = self.config.safe_name();
+
+            if self.config.is_docker() {
+                docker::exec(&name, &command)?;
+            } else {
+                let service = self.config.service.clone().unwrap();
+                let workspace_folder = self.config.workspace_folder.clone();
+                let user = self.config.remote_user.clone();
+
+                docker_compose::exec(&name, &service, &command, &user, &workspace_folder)?;
+            }
+        }
+
+        if let Some(command) = self.config.update_content_command.clone() {
+            let name = self.config.safe_name();
+
+            if self.config.is_docker() {
+                docker::exec(&name, &command)?;
+            } else {
+                let service = self.config.service.clone().unwrap();
+                let workspace_folder = self.config.workspace_folder.clone();
+                let user = self.config.remote_user.clone();
+
+                docker_compose::exec(&name, &service, &command, &user, &workspace_folder)?;
+            }
+        }
+
+        if let Some(command) = self.config.post_create_command.clone() {
+            let name = self.config.safe_name();
+
+            if self.config.is_docker() {
+                docker::exec(&name, &command)?;
+            } else {
+                let service = self.config.service.clone().unwrap();
+                let workspace_folder = self.config.workspace_folder.clone();
+                let user = self.config.remote_user.clone();
+
+                docker_compose::exec(&name, &service, &command, &user, &workspace_folder)?;
+            }
+        }
 
         Ok(())
     }

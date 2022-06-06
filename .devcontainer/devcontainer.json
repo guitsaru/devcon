@@ -15,6 +15,7 @@
 		"--security-opt",
 		"seccomp=unconfined"
 	],
+	"postCreateCommand": "ls -la ~",
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
 		"lldb.executable": "/usr/bin/lldb",
