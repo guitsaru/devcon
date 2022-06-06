@@ -3,10 +3,10 @@ use std::path::PathBuf;
 
 use crate::devcontainers::Devcontainer;
 
-pub fn run(dir: &Option<String>) -> std::io::Result<()> {
+pub fn run(dir: &Option<String>, use_cache: bool) -> std::io::Result<()> {
     let directory = get_project_directory(dir)?;
     let devcontainer = Devcontainer::load(directory);
-    devcontainer.run(true)?;
+    devcontainer.rebuild(use_cache)?;
 
     Ok(())
 }

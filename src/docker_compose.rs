@@ -7,11 +7,11 @@ pub fn build(
     name: &str,
     docker_compose_file: &Path,
     args: HashMap<String, String>,
+    use_cache: bool,
 ) -> std::io::Result<()> {
     println!("Building docker compose");
 
     let mut command = Command::new("docker");
-    command.stderr(Stdio::inherit());
     command.arg("compose");
     command.arg("-f");
     command.arg(docker_compose_file.to_str().unwrap());
@@ -20,6 +20,10 @@ pub fn build(
     command.arg("build");
     command.arg("--pull");
     command.arg("-q");
+
+    if !use_cache {
+        command.arg("--no-cache");
+    }
 
     if !args.is_empty() {
         command.arg("--build-arg");
@@ -37,7 +41,6 @@ pub fn start(name: &str, docker_compose_file: &Path) -> std::io::Result<()> {
     println!("Starting docker compose");
 
     Command::new("docker")
-        .stderr(Stdio::inherit())
         .arg("compose")
         .arg("-f")
         .arg(docker_compose_file.to_str().unwrap())
@@ -54,12 +57,17 @@ pub fn stop(name: &str) -> std::io::Result<()> {
     println!("Starting docker compose");
 
     Command::new("docker")
-        .stderr(Stdio::inherit())
         .arg("compose")
         .arg("-p")
         .arg(name)
         .arg("down")
         .status()?;
+
+    Ok(())
+}
+
+pub fn restart(name: &str) -> std::io::Result<()> {
+    Command::new("docker").arg("restart").arg(name).status()?;
 
     Ok(())
 }

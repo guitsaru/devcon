@@ -6,9 +6,9 @@ pub(crate) mod commands;
 pub(crate) mod devcontainers;
 pub(crate) mod docker;
 pub(crate) mod docker_compose;
+pub(crate) mod settings;
 
 #[derive(Parser)]
-#[clap(setting(AppSettings::ArgRequiredElseHelp))]
 #[clap(setting(AppSettings::PropagateVersion))]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
@@ -18,7 +18,14 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Start { dir: Option<String> },
+    Rebuild {
+        dir: Option<String>,
+        #[clap(short, long)]
+        no_cache: bool,
+    },
+    Start {
+        dir: Option<String>,
+    },
 }
 
 fn main() {
@@ -28,6 +35,11 @@ fn main() {
         Some(Commands::Start { dir }) => {
             commands::start::run(dir).unwrap();
         }
-        None => {}
+        Some(Commands::Rebuild { dir, no_cache }) => {
+            commands::rebuild::run(dir, !no_cache).unwrap();
+        }
+        None => {
+            commands::start::run(&None).unwrap();
+        }
     }
 }

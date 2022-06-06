@@ -7,7 +7,8 @@
 		"args": {
 			// Use the VARIANT arg to pick a Debian OS version: buster, bullseye
 			// Use bullseye when on local on arm64/Apple Silicon.
-			"VARIANT": "buster"
+			"VARIANT": "buster",
+			"INSTALL_OH_MYS": "false"
 		}
 	},
 	"runArgs": [
@@ -15,7 +16,6 @@
 		"--security-opt",
 		"seccomp=unconfined"
 	],
-	"postCreateCommand": "ls -la ~",
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
 		"lldb.executable": "/usr/bin/lldb",

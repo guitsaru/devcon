@@ -3,7 +3,11 @@ use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
-pub fn build(dockerfile: &Path, args: HashMap<String, String>) -> std::io::Result<String> {
+pub fn build(
+    dockerfile: &Path,
+    args: HashMap<String, String>,
+    use_cache: bool,
+) -> std::io::Result<String> {
     println!("Building docker container");
 
     let mut command = Command::new("docker");
@@ -13,9 +17,13 @@ pub fn build(dockerfile: &Path, args: HashMap<String, String>) -> std::io::Resul
     command.arg("-f");
     command.arg(dockerfile.to_str().unwrap());
 
+    if !use_cache {
+        command.arg("--no-cache");
+    }
+
     if !args.is_empty() {
-        command.arg("--build-arg");
         for (key, value) in &args {
+            command.arg("--build-arg");
             command.arg(format!("{}={}", key, value));
         }
     }
@@ -61,6 +69,12 @@ pub fn stop(id: &str) -> std::io::Result<()> {
     println!("Stopping docker container");
 
     Command::new("docker").arg("stop").arg(id).status()?;
+
+    Ok(())
+}
+
+pub fn restart(id: &str) -> std::io::Result<()> {
+    Command::new("docker").arg("restart").arg(id).status()?;
 
     Ok(())
 }
@@ -122,11 +136,15 @@ pub fn cp(name: &str, source: &Path, destination: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn exec(name: &str, cmd: &str) -> std::io::Result<()> {
+pub fn exec(name: &str, cmd: &str, user: &str, workspace_folder: &str) -> std::io::Result<()> {
     Command::new("docker")
         .stderr(Stdio::inherit())
         .stdout(Stdio::inherit())
         .arg("exec")
+        .arg("-u")
+        .arg(user)
+        .arg("-w")
+        .arg(workspace_folder)
         .arg(name)
         .arg("sh")
         .arg("-c")
