@@ -16,6 +16,10 @@ pub struct Config {
     run_args: Vec<String>,
     #[serde(default)]
     remote_env: HashMap<String, String>,
+    docker_compose_file: Option<String>,
+    service: Option<String>,
+    #[serde(default = "default_workspace_folder")]
+    workspace_folder: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,7 +48,12 @@ impl Config {
     }
 
     pub fn create_args(&self, workspace: &Path) -> Vec<String> {
-        let mut args = vec!["-u".to_string(), self.remote_user.clone()];
+        let mut args = vec![
+            "--name".to_string(),
+            self.safe_name(),
+            "-u".to_string(),
+            self.remote_user.clone(),
+        ];
 
         let forward_ports = self.forward_ports.clone();
         if !forward_ports.is_empty() {
@@ -62,15 +71,15 @@ impl Config {
             }
         }
 
-        let work_dir = "/workspace".to_string();
+        let workspace_folder = self.workspace_folder.clone();
         args.push("-w".to_string());
-        args.push(work_dir.clone());
+        args.push(workspace_folder.clone());
 
         args.push("--mount".to_string());
         args.push(format!(
             "type=bind,source={},target={}",
             workspace.to_str().unwrap(),
-            work_dir
+            workspace_folder
         ));
 
         for arg in self.run_args.clone() {
@@ -79,8 +88,20 @@ impl Config {
 
         args
     }
+
+    fn safe_name(&self) -> String {
+        self.name
+            .to_lowercase()
+            .replace(' ', "-")
+            .trim()
+            .to_string()
+    }
 }
 
 fn default_remote_user() -> String {
     "root".to_string()
+}
+
+fn default_workspace_folder() -> String {
+    "/workspace".to_string()
 }

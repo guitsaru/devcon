@@ -1,26 +1,17 @@
-use crate::docker;
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::devcontainers::config::Config;
+use crate::devcontainers::Devcontainer;
 
-pub fn run(dir: &Option<String>) -> Result<(), std::io::Error> {
+pub fn run(dir: &Option<String>) -> std::io::Result<()> {
     let directory = get_project_directory(dir)?;
-    let config = get_configuration(&directory)?;
-    let dockerfile = directory
-        .join(".devcontainer")
-        .join(config.dockerfile().unwrap());
-
-    let hash = docker::build(dockerfile.as_ref(), config.build_args())?;
-    let id = docker::create(hash.as_ref(), config.create_args(directory.as_ref()))?;
-    println!("ID: {}", id);
-    docker::start(id.as_ref())?;
-    docker::stop(id.as_ref())?;
+    let devcontainer = Devcontainer::load(directory);
+    devcontainer.run()?;
 
     Ok(())
 }
 
-fn get_project_directory(dir: &Option<String>) -> Result<PathBuf, std::io::Error> {
+fn get_project_directory(dir: &Option<String>) -> std::io::Result<PathBuf> {
     if let Some(path) = dir {
         let mut expanded = shellexpand::env(path).expect("Could not expand dir");
 
@@ -28,11 +19,4 @@ fn get_project_directory(dir: &Option<String>) -> Result<PathBuf, std::io::Error
     } else {
         std::env::current_dir()
     }
-}
-
-fn get_configuration(dir: &Path) -> Result<Config, std::io::Error> {
-    let file = dir.join(".devcontainer/devcontainer.json");
-    let config = Config::parse(&file)?;
-
-    Ok(config)
 }
