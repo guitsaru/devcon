@@ -91,3 +91,16 @@ pub fn attach(
 
     Ok(())
 }
+
+pub fn cp(name: &str, service: &str, source: &Path, destination: &str) -> std::io::Result<()> {
+    Command::new("docker")
+        .arg("compose")
+        .arg("-p")
+        .arg(name)
+        .arg("cp")
+        .arg(source)
+        .arg(format!("{}:{}", service, destination))
+        .status()?;
+
+    Ok(())
+}

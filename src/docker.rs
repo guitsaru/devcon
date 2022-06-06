@@ -111,3 +111,13 @@ pub fn running(name: &str) -> std::io::Result<bool> {
 
     Ok(!value.is_empty())
 }
+
+pub fn cp(name: &str, source: &Path, destination: &str) -> std::io::Result<()> {
+    Command::new("docker")
+        .arg("cp")
+        .arg(source)
+        .arg(format!("{}:{}", name, destination))
+        .status()?;
+
+    Ok(())
+}

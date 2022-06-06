@@ -30,6 +30,8 @@ impl Devcontainer {
                 docker::start(name.as_str())?;
             }
 
+            self.post_create()?;
+
             docker::attach(name.as_str())?;
 
             if self.config.should_shutdown() {
@@ -38,6 +40,7 @@ impl Devcontainer {
         } else {
             let name = self.config.safe_name();
             self.create()?;
+            self.post_create()?;
 
             if self.config.should_shutdown() {
                 docker_compose::stop(&name)?;
@@ -77,6 +80,30 @@ impl Devcontainer {
             Ok("".to_string())
         } else {
             Ok("".to_string())
+        }
+    }
+
+    fn post_create(&self) -> std::io::Result<()> {
+        self.copy_gitconfig()?;
+
+        Ok(())
+    }
+
+    fn copy_gitconfig(&self) -> std::io::Result<()> {
+        let path = shellexpand::tilde("~/.gitconfig").to_string();
+        let file = PathBuf::from(path);
+
+        if file.is_file() {
+            let name = self.config.safe_name();
+            let dest = format!("/home/{}/.gitconfig", self.config.remote_user.clone());
+
+            if self.config.is_docker() {
+                docker::cp(&name, &file, &dest)
+            } else {
+                docker_compose::cp(&name, &self.config.service.clone().unwrap(), &file, &dest)
+            }
+        } else {
+            Ok(())
         }
     }
 
