@@ -1,6 +1,7 @@
 pub mod config;
 
 use crate::docker;
+use crate::docker_compose;
 use config::Config;
 use std::path::PathBuf;
 
@@ -19,18 +20,28 @@ impl Devcontainer {
 
     pub fn run(&self) -> std::io::Result<()> {
         let name = self.config.safe_name();
-        if !docker::exists(name.as_str())? {
+
+        if self.config.is_docker() {
+            if !docker::exists(name.as_str())? {
+                self.create()?;
+            }
+
+            if !docker::running(name.as_str())? {
+                docker::start(name.as_str())?;
+            }
+
+            docker::attach(name.as_str())?;
+
+            if self.config.should_shutdown() {
+                docker::stop(name.as_str())?;
+            }
+        } else {
+            let name = self.config.safe_name();
             self.create()?;
-        }
 
-        if !docker::running(name.as_str())? {
-            docker::start(name.as_str())?;
-        }
-
-        docker::attach(name.as_str())?;
-
-        if self.config.should_shutdown() {
-            docker::stop(name.as_str())?;
+            if self.config.should_shutdown() {
+                docker_compose::stop(&name)?;
+            }
         }
 
         Ok(())
@@ -46,6 +57,24 @@ impl Devcontainer {
             docker::start(id.as_ref())?;
 
             Ok(id)
+        } else if let Some(docker_compose_file) = self.docker_compose_file() {
+            let name = self.config.safe_name();
+
+            docker_compose::build(
+                name.as_str(),
+                &docker_compose_file,
+                self.config.build_args(),
+            )?;
+
+            docker_compose::start(name.as_str(), &docker_compose_file)?;
+            docker_compose::attach(
+                &name,
+                self.config.service.clone().unwrap().as_str(),
+                self.config.remote_user.clone().as_str(),
+                self.config.workspace_folder.clone().as_str(),
+                "zsh",
+            )?;
+            Ok("".to_string())
         } else {
             Ok("".to_string())
         }
@@ -55,5 +84,15 @@ impl Devcontainer {
         self.config
             .dockerfile()
             .map(|dockerfile| self.directory.join(".devcontainer").join(dockerfile))
+    }
+
+    fn docker_compose_file(&self) -> Option<PathBuf> {
+        self.config
+            .docker_compose_file()
+            .map(|docker_compose_file| {
+                self.directory
+                    .join(".devcontainer")
+                    .join(docker_compose_file)
+            })
     }
 }

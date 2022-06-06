@@ -19,25 +19,25 @@ impl Default for ShutdownAction {
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     name: String,
-    pub build: Build,
+    pub build: Option<Build>,
     #[serde(default)]
     forward_ports: Vec<u16>,
     post_create_command: Option<String>,
     #[serde(default = "default_remote_user")]
-    remote_user: String,
+    pub remote_user: String,
     #[serde(default)]
     run_args: Vec<String>,
     #[serde(default)]
     remote_env: HashMap<String, String>,
     docker_compose_file: Option<String>,
-    service: Option<String>,
+    pub service: Option<String>,
     #[serde(default = "default_workspace_folder")]
-    workspace_folder: String,
+    pub workspace_folder: String,
     #[serde(default)]
     shutdown_action: ShutdownAction,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Build {
     pub dockerfile: Option<String>,
@@ -48,18 +48,21 @@ pub struct Build {
 impl Config {
     pub fn parse(file: &Path) -> Result<Config, std::io::Error> {
         let contents = std::fs::read_to_string(file)?;
-        let config: Config =
-            json5::from_str(&contents).unwrap_or_else(|_| panic!("Could not parse {:?}", file));
+        let config: Config = json5::from_str(&contents).unwrap();
 
         Ok(config)
     }
 
     pub fn dockerfile(&self) -> Option<String> {
-        self.build.dockerfile.clone()
+        self.build.clone().and_then(|b| b.dockerfile)
+    }
+
+    pub fn docker_compose_file(&self) -> Option<String> {
+        self.docker_compose_file.clone()
     }
 
     pub fn build_args(&self) -> HashMap<String, String> {
-        self.build.args.clone()
+        self.build.clone().map(|b| b.args).unwrap_or_default()
     }
 
     pub fn create_args(&self, workspace: &Path) -> Vec<String> {
@@ -117,6 +120,10 @@ impl Config {
 
     pub fn should_shutdown(&self) -> bool {
         !matches!(self.shutdown_action, ShutdownAction::None)
+    }
+
+    pub fn is_docker(&self) -> bool {
+        self.docker_compose_file.is_none()
     }
 }
 
