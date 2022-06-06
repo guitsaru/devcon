@@ -3,6 +3,19 @@ use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
+enum ShutdownAction {
+    None,
+    StopContainer,
+    StopCompose,
+}
+
+impl Default for ShutdownAction {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     name: String,
@@ -20,6 +33,8 @@ pub struct Config {
     service: Option<String>,
     #[serde(default = "default_workspace_folder")]
     workspace_folder: String,
+    #[serde(default)]
+    shutdown_action: ShutdownAction,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,12 +104,19 @@ impl Config {
         args
     }
 
-    fn safe_name(&self) -> String {
-        self.name
+    pub fn safe_name(&self) -> String {
+        let name = self
+            .name
             .to_lowercase()
             .replace(' ', "-")
             .trim()
-            .to_string()
+            .to_string();
+
+        format!("devcon-{}", name)
+    }
+
+    pub fn should_shutdown(&self) -> bool {
+        !matches!(self.shutdown_action, ShutdownAction::None)
     }
 }
 

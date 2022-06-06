@@ -18,6 +18,25 @@ impl Devcontainer {
     }
 
     pub fn run(&self) -> std::io::Result<()> {
+        let name = self.config.safe_name();
+        if !docker::exists(name.as_str())? {
+            self.create()?;
+        }
+
+        if !docker::running(name.as_str())? {
+            docker::start(name.as_str())?;
+        }
+
+        docker::attach(name.as_str())?;
+
+        if self.config.should_shutdown() {
+            docker::stop(name.as_str())?;
+        }
+
+        Ok(())
+    }
+
+    fn create(&self) -> std::io::Result<String> {
         if let Some(dockerfile) = self.dockerfile() {
             let hash = docker::build(dockerfile.as_ref(), self.config.build_args())?;
             let id = docker::create(
@@ -25,13 +44,14 @@ impl Devcontainer {
                 self.config.create_args(self.directory.as_ref()),
             )?;
             docker::start(id.as_ref())?;
-            docker::stop(id.as_ref())?;
-        }
 
-        Ok(())
+            Ok(id)
+        } else {
+            Ok("".to_string())
+        }
     }
 
-    pub fn dockerfile(&self) -> Option<PathBuf> {
+    fn dockerfile(&self) -> Option<PathBuf> {
         self.config
             .dockerfile()
             .map(|dockerfile| self.directory.join(".devcontainer").join(dockerfile))
