@@ -67,7 +67,12 @@ pub fn stop(name: &str) -> std::io::Result<()> {
 }
 
 pub fn restart(name: &str) -> std::io::Result<()> {
-    Command::new("docker").arg("restart").arg(name).status()?;
+    Command::new("docker")
+        .arg("compose")
+        .arg("-p")
+        .arg(name)
+        .arg("restart")
+        .status()?;
 
     Ok(())
 }

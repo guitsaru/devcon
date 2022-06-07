@@ -11,7 +11,7 @@ enum ShutdownAction {
 
 impl Default for ShutdownAction {
     fn default() -> Self {
-        Self::None
+        Self::StopContainer
     }
 }
 
