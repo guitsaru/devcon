@@ -1,4 +1,3 @@
-use clap::AppSettings;
 use clap::Parser;
 use clap::Subcommand;
 
@@ -9,8 +8,8 @@ pub(crate) mod docker_compose;
 pub(crate) mod settings;
 
 #[derive(Parser)]
-#[clap(setting(AppSettings::PropagateVersion))]
 #[clap(author, version, about, long_about = None)]
+#[clap(propagate_version = true)]
 struct Cli {
     #[clap(subcommand)]
     command: Option<Commands>,
