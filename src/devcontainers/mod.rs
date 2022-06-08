@@ -28,11 +28,13 @@ impl Devcontainer {
                 self.create(use_cache)?;
             }
 
+            self.post_create()?;
+
             if !docker::running(name.as_str())? {
                 docker::start(name.as_str())?;
+            } else {
+                self.restart()?;
             }
-
-            self.post_create()?;
 
             docker::attach(name.as_str())?;
 

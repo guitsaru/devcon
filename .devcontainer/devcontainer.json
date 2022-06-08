@@ -4,12 +4,7 @@
 	"name": "Rust",
 	"build": {
 		"dockerfile": "Dockerfile",
-		"args": {
-			// Use the VARIANT arg to pick a Debian OS version: buster, bullseye
-			// Use bullseye when on local on arm64/Apple Silicon.
-			"VARIANT": "bullseye",
-			"INSTALL_OH_MYS": "false"
-		}
+		"args": {}
 	},
 	"runArgs": [
 		"--cap-add=SYS_PTRACE",
@@ -38,7 +33,7 @@
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "rustc --version",
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "vscode",
+	"remoteUser": "devcon",
 	"features": {
 		"github-cli": "latest"
 	}

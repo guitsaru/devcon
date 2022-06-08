@@ -1,10 +1,16 @@
-# See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.234.0/containers/rust/.devcontainer/base.Dockerfile
+FROM fedora:latest
 
-# [Choice] Debian OS version (use bullseye on local arm64/Apple Silicon): buster, bullseye
-ARG VARIANT="bullseye"
-FROM mcr.microsoft.com/vscode/devcontainers/rust:0-${VARIANT}
+ARG USER=devcon
+ENV SHELL=/usr/bin/zsh
 
-# [Optional] Uncomment this section to install additional packages.
-RUN wget https://github.com/neovim/neovim/releases/download/v0.7.0/nvim-linux64.deb && dpkg -i nvim-linux64.deb && rm nvim-linux64.deb
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends neovim fzf ripgrep tmux
+RUN dnf update -y
+RUN dnf install -y procps zsh neovim clang fd-find ripgrep fzf exa bat git-delta tmux python3-neovim starship gh lldb
+
+RUN useradd -ms /usr/bin/zsh $USER && \
+    usermod -aG wheel $USER && \
+    echo "${USER}        ALL=(ALL)       NOPASSWD: ALL" >> /etc/sudoers
+
+RUN dnf install -y rust cargo clippy rustfmt rust-src
+
+USER $USER
+
