@@ -72,7 +72,7 @@ impl Devcontainer {
             self.run(false)
         } else {
             let name = self.config.safe_name();
-            docker_compose::stop(&name)?;
+            docker_compose::down(&name)?;
 
             self.run(use_cache)
         }
@@ -120,7 +120,6 @@ impl Devcontainer {
 
         self.copy_gitconfig()?;
         self.copy_dotfiles()?;
-        self.restart()?;
 
         Ok(())
     }

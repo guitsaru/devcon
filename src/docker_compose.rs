@@ -53,14 +53,27 @@ pub fn start(name: &str, docker_compose_file: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn stop(name: &str) -> std::io::Result<()> {
-    println!("Starting docker compose");
+pub fn down(name: &str) -> std::io::Result<()> {
+    println!("Removing docker compose");
 
     Command::new("docker")
         .arg("compose")
         .arg("-p")
         .arg(name)
         .arg("down")
+        .status()?;
+
+    Ok(())
+}
+
+pub fn stop(name: &str) -> std::io::Result<()> {
+    println!("Stopping docker compose");
+
+    Command::new("docker")
+        .arg("compose")
+        .arg("-p")
+        .arg(name)
+        .arg("stop")
         .status()?;
 
     Ok(())
