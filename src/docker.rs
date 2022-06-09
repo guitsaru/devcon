@@ -3,6 +3,8 @@ use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
+use colored::Colorize;
+
 fn print_command(command: &Command) {
     let exec = command.get_program();
     let args: Vec<&str> = command
@@ -10,17 +12,22 @@ fn print_command(command: &Command) {
         .map(|arg| arg.to_str().unwrap())
         .collect();
 
-    println!("{} {}", exec.to_str().unwrap(), args.join(" "));
+    let output = format!("{} {}", exec.to_str().unwrap(), args.join(" "));
+    println!("");
+    println!("{}", output.bold().blue());
 }
 
 pub fn build(
+    docker_command: String,
+    name: &String,
     dockerfile: &Path,
     args: HashMap<String, String>,
     use_cache: bool,
-) -> std::io::Result<String> {
-    let mut command = Command::new("docker");
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command.clone());
     command.arg("build");
-    command.arg("-q");
+    command.arg("-t");
+    command.arg(name);
     command.arg("-f");
     command.arg(dockerfile.to_str().unwrap());
 
@@ -39,15 +46,11 @@ pub fn build(
 
     print_command(&command);
 
-    let hash = command.output()?.stdout;
-    let str_hash = String::from_utf8(hash).unwrap();
-
-    Ok(str_hash)
+    Ok(command.status()?.success())
 }
 
-pub fn create(image_hash: &str, args: Vec<String>) -> std::io::Result<String> {
-    let mut command = Command::new("docker");
-    command.stderr(Stdio::inherit());
+pub fn create(docker_command: String, name: &str, args: Vec<String>) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("create");
     command.arg("-it");
 
@@ -55,69 +58,61 @@ pub fn create(image_hash: &str, args: Vec<String>) -> std::io::Result<String> {
         command.arg(arg);
     }
 
-    command.arg(image_hash.trim());
+    command.arg(name);
     command.arg("zsh");
 
     print_command(&command);
 
-    let id = command.output()?.stdout;
-    let str_id = String::from_utf8(id).unwrap().trim().to_string();
-
-    Ok(str_id)
+    Ok(command.status()?.success())
 }
 
-pub fn start(id: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn start(docker_command: String, id: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("start").arg(id);
 
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn stop(id: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn stop(docker_command: String, id: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("stop").arg(id);
 
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn restart(id: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn restart(docker_command: String, id: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("restart").arg(id);
 
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn attach(id: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn attach(docker_command: String, id: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
 
     command.arg("attach").arg(id);
 
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn rm(id: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn rm(docker_command: String, id: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("rm").arg(id);
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn exists(name: &str) -> std::io::Result<bool> {
-    let output = Command::new("docker")
+pub fn exists(docker_command: String, name: &str) -> std::io::Result<bool> {
+    let output = Command::new(docker_command)
         .arg("ps")
         .arg("-aq")
         .arg("--filter")
@@ -130,8 +125,8 @@ pub fn exists(name: &str) -> std::io::Result<bool> {
     Ok(!value.is_empty())
 }
 
-pub fn running(name: &str) -> std::io::Result<bool> {
-    let output = Command::new("docker")
+pub fn running(docker_command: String, name: &str) -> std::io::Result<bool> {
+    let output = Command::new(docker_command)
         .arg("ps")
         .arg("-q")
         .arg("--filter")
@@ -144,20 +139,32 @@ pub fn running(name: &str) -> std::io::Result<bool> {
     Ok(!value.is_empty())
 }
 
-pub fn cp(name: &str, source: &Path, destination: &str) -> std::io::Result<()> {
-    Command::new("docker")
+pub fn cp(
+    docker_command: String,
+    name: &str,
+    source: &Path,
+    destination: &str,
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
+    command
         .arg("cp")
         .arg(source)
-        .arg(format!("{}:{}", name, destination))
-        .status()?;
+        .arg(format!("{}:{}", name, destination));
 
-    Ok(())
+    print_command(&command);
+
+    Ok(command.status()?.success())
 }
 
-pub fn exec(name: &str, cmd: &str, user: &str, workspace_folder: &str) -> std::io::Result<()> {
-    Command::new("docker")
-        .stderr(Stdio::inherit())
-        .stdout(Stdio::inherit())
+pub fn exec(
+    docker_command: String,
+    name: &str,
+    cmd: &str,
+    user: &str,
+    workspace_folder: &str,
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
+    command
         .arg("exec")
         .arg("-u")
         .arg(user)
@@ -166,7 +173,18 @@ pub fn exec(name: &str, cmd: &str, user: &str, workspace_folder: &str) -> std::i
         .arg(name)
         .arg("sh")
         .arg("-c")
-        .arg(cmd)
-        .status()?;
-    Ok(())
+        .arg(cmd);
+
+    print_command(&command);
+
+    Ok(command.status()?.success())
+}
+
+pub fn unshare(docker_command: String, cmd: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
+    command.arg("unshare").arg(cmd);
+
+    print_command(&command);
+
+    Ok(command.status()?.success())
 }

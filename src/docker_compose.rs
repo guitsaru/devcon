@@ -1,3 +1,4 @@
+use colored::Colorize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
@@ -10,16 +11,19 @@ fn print_command(command: &Command) {
         .map(|arg| arg.to_str().unwrap())
         .collect();
 
-    println!("{} {}", exec.to_str().unwrap(), args.join(" "));
+    let output = format!("{} {}", exec.to_str().unwrap(), args.join(" "));
+    println!("");
+    println!("{}", output.bold().blue());
 }
 
 pub fn build(
+    docker_command: String,
     name: &str,
     docker_compose_file: &Path,
     args: HashMap<String, String>,
     use_cache: bool,
-) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("compose");
     command.arg("-f");
     command.arg(docker_compose_file.to_str().unwrap());
@@ -42,13 +46,15 @@ pub fn build(
 
     print_command(&command);
 
-    command.status()?;
-
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn start(name: &str, docker_compose_file: &Path) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn start(
+    docker_command: String,
+    name: &str,
+    docker_compose_file: &Path,
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command
         .arg("compose")
         .arg("-f")
@@ -60,13 +66,11 @@ pub fn start(name: &str, docker_compose_file: &Path) -> std::io::Result<()> {
 
     print_command(&command);
 
-    command.status()?;
-
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn down(name: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn down(docker_command: String, name: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command
         .arg("compose")
         .arg("-p")
@@ -77,37 +81,35 @@ pub fn down(name: &str) -> std::io::Result<()> {
         .arg("all");
 
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn stop(name: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn stop(docker_command: String, name: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("compose").arg("-p").arg(name).arg("stop");
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn restart(name: &str) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+pub fn restart(docker_command: String, name: &str) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command.arg("compose").arg("-p").arg(name).arg("restart");
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
 pub fn attach(
+    docker_command: String,
     name: &str,
     service: &str,
     user: &str,
     workspace_folder: &str,
     cmd: &str,
-) -> std::io::Result<()> {
-    let mut command = Command::new("docker");
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
     command
         .arg("compose")
         .arg("-p")
@@ -120,34 +122,39 @@ pub fn attach(
         .arg(service)
         .arg(cmd);
     print_command(&command);
-    command.status()?;
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
-pub fn cp(name: &str, service: &str, source: &Path, destination: &str) -> std::io::Result<()> {
-    Command::new("docker")
+pub fn cp(
+    docker_command: String,
+    name: &str,
+    service: &str,
+    source: &Path,
+    destination: &str,
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
+    command
         .arg("compose")
         .arg("-p")
         .arg(name)
         .arg("cp")
         .arg(source)
-        .arg(format!("{}:{}", service, destination))
-        .status()?;
+        .arg(format!("{}:{}", service, destination));
 
-    Ok(())
+    Ok(command.status()?.success())
 }
 
 pub fn exec(
+    docker_command: String,
     name: &str,
     service: &str,
     cmd: &str,
     user: &str,
     workspace_folder: &str,
-) -> std::io::Result<()> {
-    Command::new("docker")
-        .stderr(Stdio::inherit())
-        .stdout(Stdio::inherit())
+) -> std::io::Result<bool> {
+    let mut command = Command::new(docker_command);
+    command
         .arg("compose")
         .arg("-p")
         .arg(name)
@@ -159,8 +166,7 @@ pub fn exec(
         .arg(service)
         .arg("sh")
         .arg("-c")
-        .arg(cmd)
-        .status()?;
+        .arg(cmd);
 
-    Ok(())
+    Ok(command.status()?.success())
 }

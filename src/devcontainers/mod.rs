@@ -24,22 +24,21 @@ impl Devcontainer {
         let name = self.config.safe_name();
 
         if self.config.is_docker() {
-            if !docker::exists(name.as_str())? {
+            if !docker::exists(self.docker_command(), name.as_str())? {
                 self.create(use_cache)?;
             }
 
-            self.post_create()?;
-
-            if !docker::running(name.as_str())? {
-                docker::start(name.as_str())?;
-            } else {
-                self.restart()?;
+            if !docker::running(self.docker_command(), name.as_str())? {
+                docker::start(self.docker_command(), name.as_str())?;
             }
 
-            docker::attach(name.as_str())?;
+            self.post_create()?;
+            self.restart()?;
+
+            docker::attach(self.docker_command(), name.as_str())?;
 
             if self.config.should_shutdown() {
-                docker::stop(name.as_str())?;
+                docker::stop(self.docker_command(), name.as_str())?;
             }
         } else {
             let name = self.config.safe_name();
@@ -47,15 +46,16 @@ impl Devcontainer {
             self.post_create()?;
 
             docker_compose::attach(
+                self.docker_command(),
                 &name,
                 self.config.service.clone().unwrap().as_str(),
-                self.config.remote_user.clone().as_str(),
+                self.remote_user(),
                 self.config.workspace_folder.clone().as_str(),
                 "zsh",
             )?;
 
             if self.config.should_shutdown() {
-                docker_compose::stop(&name)?;
+                docker_compose::stop(self.docker_command(), &name)?;
             }
         }
 
@@ -66,45 +66,64 @@ impl Devcontainer {
         let name = self.config.safe_name();
 
         if self.config.is_docker() {
-            if docker::exists(name.as_str())? {}
+            if docker::exists(self.docker_command(), name.as_str())? {}
 
-            docker::stop(&name)?;
-            docker::rm(&name)?;
+            docker::stop(self.docker_command(), &name)?;
+            docker::rm(self.docker_command(), &name)?;
 
             self.run(false)
         } else {
             let name = self.config.safe_name();
-            docker_compose::down(&name)?;
+            docker_compose::down(self.docker_command(), &name)?;
 
             self.run(use_cache)
         }
     }
 
-    fn create(&self, use_cache: bool) -> std::io::Result<String> {
+    fn remote_user(&self) -> &str {
+        self.config.remote_user.as_ref()
+    }
+
+    fn is_podman(&self) -> bool {
+        self.docker_command() == "podman"
+    }
+
+    fn create_args(&self) -> Vec<String> {
+        let mut create_args = self.config.create_args(self.directory.as_ref());
+
+        if self.is_podman() {
+            create_args.push("--userns=keep-id".to_string());
+        }
+
+        create_args
+    }
+
+    fn create(&self, use_cache: bool) -> std::io::Result<()> {
+        let name = self.config.safe_name();
+
         if let Some(dockerfile) = self.dockerfile() {
-            let hash = docker::build(dockerfile.as_ref(), self.config.build_args(), use_cache)?;
-            let id = docker::create(
-                hash.as_ref(),
-                self.config.create_args(self.directory.as_ref()),
+            docker::build(
+                self.docker_command(),
+                &name,
+                dockerfile.as_ref(),
+                self.config.build_args(),
+                use_cache,
             )?;
-            docker::start(id.as_ref())?;
 
-            Ok(id)
+            docker::create(self.docker_command(), &name, self.create_args())?;
+            docker::start(self.docker_command(), &name)?;
         } else if let Some(docker_compose_file) = self.docker_compose_file() {
-            let name = self.config.safe_name();
-
             docker_compose::build(
+                self.docker_command(),
                 name.as_str(),
                 &docker_compose_file,
                 self.config.build_args(),
                 use_cache,
             )?;
 
-            docker_compose::start(name.as_str(), &docker_compose_file)?;
-            Ok("".to_string())
-        } else {
-            Ok("".to_string())
+            docker_compose::start(self.docker_command(), name.as_str(), &docker_compose_file)?;
         }
+        Ok(())
     }
 
     fn post_create(&self) -> std::io::Result<()> {
@@ -126,60 +145,79 @@ impl Devcontainer {
         Ok(())
     }
 
-    fn restart(&self) -> std::io::Result<()> {
+    fn restart(&self) -> std::io::Result<bool> {
         let name = self.config.safe_name();
         if self.config.is_docker() {
-            docker::restart(&name)
+            docker::restart(self.docker_command(), &name)
         } else {
-            docker_compose::restart(&name)
+            docker_compose::restart(self.docker_command(), &name)
         }
     }
 
-    fn exec(&self, command: &str) -> std::io::Result<()> {
+    fn exec(&self, command: &str) -> std::io::Result<bool> {
         let name = self.config.safe_name();
         let workspace_folder = self.config.workspace_folder.clone();
-        let user = self.config.remote_user.clone();
+        let user = self.remote_user();
 
         if self.config.is_docker() {
-            docker::exec(&name, command, &user, &workspace_folder)
+            docker::exec(
+                self.docker_command(),
+                &name,
+                command,
+                &user,
+                &workspace_folder,
+            )
         } else {
             let service = self.config.service.clone().unwrap();
 
-            docker_compose::exec(&name, &service, command, &user, &workspace_folder)
+            docker_compose::exec(
+                self.docker_command(),
+                &name,
+                &service,
+                command,
+                &user,
+                &workspace_folder,
+            )
         }
     }
 
-    fn copy(&self, source: &Path, dest: &str) -> std::io::Result<()> {
+    fn copy(&self, source: &Path, dest: &str) -> std::io::Result<bool> {
         if source.exists() {
             let name = self.config.safe_name();
             let destpath = PathBuf::from(dest);
+
             let basedir = destpath.parent().and_then(|p| p.to_str()).unwrap();
+
+            let destination = if source.is_dir() { basedir } else { dest };
 
             if self.config.is_docker() {
                 self.exec(format!("mkdir -p {}", basedir).as_str())?;
-                docker::cp(&name, source, dest)
+                docker::cp(self.docker_command(), &name, source, destination)
             } else {
                 let service = self.config.service.clone().unwrap();
 
                 self.exec(format!("mkdir -p {}", basedir).as_str())?;
-                docker_compose::cp(&name, &service, source, dest)
+                docker_compose::cp(self.docker_command(), &name, &service, source, dest)
             }
         } else {
-            println!("not a file");
-            Ok(())
+            println!("Could not find file at {:?}", source);
+            Ok(false)
         }
     }
 
     fn copy_dotfiles(&self) -> std::io::Result<()> {
         let settings = Settings::load();
+        let homedir = if self.remote_user() == "root" {
+            PathBuf::from("/root")
+        } else {
+            PathBuf::from("/home").join(self.remote_user())
+        };
 
         for file in settings.dotfiles {
             let tilded = format!("~/{}", file);
             let expanded = shellexpand::tilde(&tilded).to_string();
             let source = PathBuf::from(expanded);
-            let dest = PathBuf::from("/home")
-                .join(self.config.remote_user.clone())
-                .join(file.clone());
+            let dest = homedir.join(file.clone());
 
             self.copy(&source, dest.to_str().unwrap())?;
         }
@@ -187,12 +225,16 @@ impl Devcontainer {
         Ok(())
     }
 
-    fn copy_gitconfig(&self) -> std::io::Result<()> {
+    fn copy_gitconfig(&self) -> std::io::Result<bool> {
         let path = shellexpand::tilde("~/.gitconfig").to_string();
         let file = PathBuf::from(path);
-        let dest = format!("/home/{}/.gitconfig", self.config.remote_user.clone());
+        let dest = format!("/home/{}/.gitconfig", self.remote_user());
 
         self.copy(&file, &dest)
+    }
+
+    fn docker_command(&self) -> String {
+        "docker".to_string()
     }
 
     fn dockerfile(&self) -> Option<PathBuf> {
