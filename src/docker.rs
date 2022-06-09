@@ -3,15 +3,22 @@ use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
+fn print_command(command: &Command) {
+    let exec = command.get_program();
+    let args: Vec<&str> = command
+        .get_args()
+        .map(|arg| arg.to_str().unwrap())
+        .collect();
+
+    println!("{} {}", exec.to_str().unwrap(), args.join(" "));
+}
+
 pub fn build(
     dockerfile: &Path,
     args: HashMap<String, String>,
     use_cache: bool,
 ) -> std::io::Result<String> {
-    println!("Building docker container");
-
     let mut command = Command::new("docker");
-    command.stderr(Stdio::inherit());
     command.arg("build");
     command.arg("-q");
     command.arg("-f");
@@ -30,6 +37,8 @@ pub fn build(
 
     command.arg(".");
 
+    print_command(&command);
+
     let hash = command.output()?.stdout;
     let str_hash = String::from_utf8(hash).unwrap();
 
@@ -37,8 +46,6 @@ pub fn build(
 }
 
 pub fn create(image_hash: &str, args: Vec<String>) -> std::io::Result<String> {
-    println!("Creating docker container");
-
     let mut command = Command::new("docker");
     command.stderr(Stdio::inherit());
     command.arg("create");
@@ -51,6 +58,8 @@ pub fn create(image_hash: &str, args: Vec<String>) -> std::io::Result<String> {
     command.arg(image_hash.trim());
     command.arg("zsh");
 
+    print_command(&command);
+
     let id = command.output()?.stdout;
     let str_id = String::from_utf8(id).unwrap().trim().to_string();
 
@@ -58,42 +67,51 @@ pub fn create(image_hash: &str, args: Vec<String>) -> std::io::Result<String> {
 }
 
 pub fn start(id: &str) -> std::io::Result<()> {
-    println!("Starting docker container");
+    let mut command = Command::new("docker");
+    command.arg("start").arg(id);
 
-    Command::new("docker").arg("start").arg(id).status()?;
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
 
 pub fn stop(id: &str) -> std::io::Result<()> {
-    println!("Stopping docker container");
+    let mut command = Command::new("docker");
+    command.arg("stop").arg(id);
 
-    Command::new("docker").arg("stop").arg(id).status()?;
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
 
 pub fn restart(id: &str) -> std::io::Result<()> {
-    Command::new("docker").arg("restart").arg(id).status()?;
+    let mut command = Command::new("docker");
+    command.arg("restart").arg(id);
+
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
 
 pub fn attach(id: &str) -> std::io::Result<()> {
-    println!("Attaching to docker container");
-    Command::new("docker")
-        .stderr(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stdin(Stdio::inherit())
-        .arg("attach")
-        .arg(id)
-        .status()?;
+    let mut command = Command::new("docker");
+
+    command.arg("attach").arg(id);
+
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
 
 pub fn rm(id: &str) -> std::io::Result<()> {
-    Command::new("docker").arg("rm").arg(id).status()?;
+    let mut command = Command::new("docker");
+    command.arg("rm").arg(id);
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }

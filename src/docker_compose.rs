@@ -3,14 +3,22 @@ use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
+fn print_command(command: &Command) {
+    let exec = command.get_program();
+    let args: Vec<&str> = command
+        .get_args()
+        .map(|arg| arg.to_str().unwrap())
+        .collect();
+
+    println!("{} {}", exec.to_str().unwrap(), args.join(" "));
+}
+
 pub fn build(
     name: &str,
     docker_compose_file: &Path,
     args: HashMap<String, String>,
     use_cache: bool,
 ) -> std::io::Result<()> {
-    println!("Building docker compose");
-
     let mut command = Command::new("docker");
     command.arg("compose");
     command.arg("-f");
@@ -32,60 +40,62 @@ pub fn build(
         }
     }
 
+    print_command(&command);
+
     command.status()?;
 
     Ok(())
 }
 
 pub fn start(name: &str, docker_compose_file: &Path) -> std::io::Result<()> {
-    println!("Starting docker compose");
-
-    Command::new("docker")
+    let mut command = Command::new("docker");
+    command
         .arg("compose")
         .arg("-f")
         .arg(docker_compose_file.to_str().unwrap())
         .arg("-p")
         .arg(name)
         .arg("up")
-        .arg("--detach")
-        .status()?;
+        .arg("--detach");
+
+    print_command(&command);
+
+    command.status()?;
 
     Ok(())
 }
 
 pub fn down(name: &str) -> std::io::Result<()> {
-    println!("Removing docker compose");
-
-    Command::new("docker")
+    let mut command = Command::new("docker");
+    command
         .arg("compose")
         .arg("-p")
         .arg(name)
         .arg("down")
-        .status()?;
+        .arg("--remove-orphans")
+        .arg("--rmi")
+        .arg("all");
+
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
 
 pub fn stop(name: &str) -> std::io::Result<()> {
-    println!("Stopping docker compose");
-
-    Command::new("docker")
-        .arg("compose")
-        .arg("-p")
-        .arg(name)
-        .arg("stop")
-        .status()?;
+    let mut command = Command::new("docker");
+    command.arg("compose").arg("-p").arg(name).arg("stop");
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
 
 pub fn restart(name: &str) -> std::io::Result<()> {
-    Command::new("docker")
-        .arg("compose")
-        .arg("-p")
-        .arg(name)
-        .arg("restart")
-        .status()?;
+    let mut command = Command::new("docker");
+    command.arg("compose").arg("-p").arg(name).arg("restart");
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
@@ -95,14 +105,10 @@ pub fn attach(
     service: &str,
     user: &str,
     workspace_folder: &str,
-    command: &str,
+    cmd: &str,
 ) -> std::io::Result<()> {
-    println!("Starting docker compose");
-
-    Command::new("docker")
-        .stderr(Stdio::inherit())
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
+    let mut command = Command::new("docker");
+    command
         .arg("compose")
         .arg("-p")
         .arg(name)
@@ -112,8 +118,9 @@ pub fn attach(
         .arg("-w")
         .arg(workspace_folder)
         .arg(service)
-        .arg(command)
-        .status()?;
+        .arg(cmd);
+    print_command(&command);
+    command.status()?;
 
     Ok(())
 }
