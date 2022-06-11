@@ -8,7 +8,7 @@ use std::io::Result;
 
 pub(crate) trait Provider {
     fn build(&self, use_cache: bool) -> Result<bool>;
-    fn create(&self) -> Result<bool>;
+    fn create(&self, args: Vec<String>) -> Result<bool>;
     fn start(&self) -> Result<bool>;
     fn stop(&self) -> Result<bool>;
     fn restart(&self) -> Result<bool>;

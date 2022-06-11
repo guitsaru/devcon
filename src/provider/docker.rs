@@ -44,7 +44,7 @@ impl Provider for Docker {
         Ok(command.status()?.success())
     }
 
-    fn create(&self) -> Result<bool> {
+    fn create(&self, args: Vec<String>) -> Result<bool> {
         let tag = format!("{}/{}", "devcon", &self.name);
 
         let mut command = Command::new(&self.command);
@@ -54,6 +54,10 @@ impl Provider for Docker {
             "type=bind,source={},target={}",
             &self.directory, &self.workspace_folder
         ));
+
+        for arg in &args {
+            command.arg(arg);
+        }
 
         for arg in &self.run_args {
             command.arg(arg);

@@ -42,7 +42,7 @@ impl Provider for DockerCompose {
         Ok(command.status()?.success())
     }
 
-    fn create(&self) -> Result<bool> {
+    fn create(&self, _args: Vec<String>) -> Result<bool> {
         Ok(true)
     }
 

@@ -64,7 +64,7 @@ impl Devcontainer {
 
         if !provider.exists()? {
             provider.build(use_cache)?;
-            provider.create()?;
+            provider.create(self.create_args())?;
         }
 
         Ok(())
@@ -136,6 +136,31 @@ impl Devcontainer {
         let dest = format!("/home/{}/.gitconfig", self.config.remote_user);
 
         self.copy(&file, &dest)
+    }
+
+    pub fn create_args(&self) -> Vec<String> {
+        let mut args = vec![];
+
+        for port in &self.config.forward_ports {
+            args.push("-p".to_string());
+            let ports = format!("{}:{}", port, port);
+            args.push(ports);
+        }
+
+        for (key, value) in &self.config.remote_env {
+            args.push("-e".to_string());
+            args.push(format!("{}={}", key, value));
+        }
+
+        let workspace_folder = self.config.workspace_folder.clone();
+        args.push("-w".to_string());
+        args.push(workspace_folder.clone());
+
+        for arg in self.config.run_args.clone() {
+            args.push(arg);
+        }
+
+        args
     }
 }
 
