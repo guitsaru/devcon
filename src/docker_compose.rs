@@ -2,7 +2,6 @@ use colored::Colorize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::Command;
-use std::process::Stdio;
 
 fn print_command(command: &Command) {
     let exec = command.get_program();
@@ -30,7 +29,6 @@ pub fn build(
     command.arg("-p");
     command.arg(name);
     command.arg("build");
-    command.arg("--pull");
     command.arg("-q");
 
     if !use_cache {

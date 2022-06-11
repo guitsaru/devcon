@@ -1,7 +1,9 @@
 pub mod config;
 
 use crate::provider::docker::Docker;
+use crate::provider::docker_compose::DockerCompose;
 use crate::provider::podman::Podman;
+use crate::provider::podman_compose::PodmanCompose;
 use crate::provider::Provider;
 use crate::settings::Settings;
 use config::Config;
@@ -11,6 +13,7 @@ use std::path::PathBuf;
 pub struct Devcontainer {
     config: Config,
     provider: Box<dyn Provider>,
+    settings: Settings,
 }
 
 impl Devcontainer {
@@ -18,46 +21,12 @@ impl Devcontainer {
         let file = directory.join(".devcontainer").join("devcontainer.json");
         let config = Config::parse(&file).expect("could not find devcontainer.json");
         let settings = Settings::load();
-
-        let provider: Box<dyn Provider> = match settings.provider {
-            crate::settings::Provider::Docker => {
-                let dockerfile = directory
-                    .join(".devcontainer")
-                    .join(config.dockerfile().unwrap());
-
-                Box::new(Docker {
-                    build_args: config.build_args(),
-                    directory: directory.to_str().map(|d| d.to_string()).unwrap(),
-                    command: "docker".to_string(),
-                    file: dockerfile.to_str().unwrap().to_string(),
-                    name: config.safe_name(),
-                    run_args: config.run_args.clone(),
-                    user: config.remote_user.clone(),
-                    workspace_folder: config.workspace_folder.clone(),
-                })
-            }
-            crate::settings::Provider::Podman => {
-                let dockerfile = directory
-                    .join(".devcontainer")
-                    .join(config.dockerfile().unwrap());
-
-                Box::new(Podman {
-                    build_args: config.build_args(),
-                    directory: directory.to_str().map(|d| d.to_string()).unwrap(),
-                    command: "podman".to_string(),
-                    file: dockerfile.to_str().unwrap().to_string(),
-                    name: config.safe_name(),
-                    run_args: config.run_args.clone(),
-                    user: config.remote_user.clone(),
-                    workspace_folder: config.workspace_folder.clone(),
-                })
-            }
-            _ => unimplemented!(),
-        };
+        let provider = build_provider(&directory, &settings, &config);
 
         Self {
-            provider,
             config: config.clone(),
+            provider,
+            settings,
         }
     }
 
@@ -143,14 +112,13 @@ impl Devcontainer {
     }
 
     fn copy_dotfiles(&self) -> std::io::Result<()> {
-        let settings = Settings::load();
         let homedir = if self.config.remote_user == "root" {
             PathBuf::from("/root")
         } else {
             PathBuf::from("/home").join(&self.config.remote_user)
         };
 
-        for file in settings.dotfiles {
+        for file in &self.settings.dotfiles {
             let tilded = format!("~/{}", file);
             let expanded = shellexpand::tilde(&tilded).to_string();
             let source = PathBuf::from(expanded);
@@ -168,5 +136,79 @@ impl Devcontainer {
         let dest = format!("/home/{}/.gitconfig", self.config.remote_user);
 
         self.copy(&file, &dest)
+    }
+}
+
+fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> Box<dyn Provider> {
+    match settings.provider {
+        crate::settings::Provider::Docker => {
+            if config.is_compose() {
+                let composefile = directory
+                    .join(".devcontainer")
+                    .join(config.docker_compose_file.as_ref().unwrap());
+
+                Box::new(DockerCompose {
+                    build_args: config.build_args(),
+                    directory: directory.to_str().map(|d| d.to_string()).unwrap(),
+                    command: "docker".to_string(),
+                    file: composefile.to_str().unwrap().to_string(),
+                    name: config.safe_name(),
+                    run_args: config.run_args.clone(),
+                    service: config.service.as_ref().unwrap().to_string(),
+                    user: config.remote_user.clone(),
+                    workspace_folder: config.workspace_folder.clone(),
+                })
+            } else {
+                let dockerfile = directory
+                    .join(".devcontainer")
+                    .join(config.dockerfile().unwrap());
+
+                Box::new(Docker {
+                    build_args: config.build_args(),
+                    directory: directory.to_str().map(|d| d.to_string()).unwrap(),
+                    command: "docker".to_string(),
+                    file: dockerfile.to_str().unwrap().to_string(),
+                    name: config.safe_name(),
+                    run_args: config.run_args.clone(),
+                    user: config.remote_user.clone(),
+                    workspace_folder: config.workspace_folder.clone(),
+                })
+            }
+        }
+        crate::settings::Provider::Podman => {
+            if config.is_compose() {
+                let composefile = directory
+                    .join(".devcontainer")
+                    .join(config.docker_compose_file.as_ref().unwrap());
+
+                Box::new(PodmanCompose {
+                    build_args: config.build_args(),
+                    directory: directory.to_str().map(|d| d.to_string()).unwrap(),
+                    command: "podman-compose".to_string(),
+                    file: composefile.to_str().unwrap().to_string(),
+                    name: config.safe_name(),
+                    run_args: config.run_args.clone(),
+                    service: config.service.as_ref().unwrap().to_string(),
+                    user: config.remote_user.clone(),
+                    workspace_folder: config.workspace_folder.clone(),
+                })
+            } else {
+                let dockerfile = directory
+                    .join(".devcontainer")
+                    .join(config.dockerfile().unwrap());
+
+                Box::new(Podman {
+                    build_args: config.build_args(),
+                    directory: directory.to_str().map(|d| d.to_string()).unwrap(),
+                    command: "podman".to_string(),
+                    file: dockerfile.to_str().unwrap().to_string(),
+                    name: config.safe_name(),
+                    run_args: config.run_args.clone(),
+                    user: config.remote_user.clone(),
+                    workspace_folder: config.workspace_folder.clone(),
+                })
+            }
+        }
+        _ => unimplemented!(),
     }
 }

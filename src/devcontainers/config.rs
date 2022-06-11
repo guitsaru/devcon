@@ -31,7 +31,7 @@ pub struct Config {
     pub run_args: Vec<String>,
     #[serde(default)]
     remote_env: HashMap<String, String>,
-    docker_compose_file: Option<String>,
+    pub docker_compose_file: Option<String>,
     pub service: Option<String>,
     #[serde(default = "default_workspace_folder")]
     pub workspace_folder: String,
@@ -57,10 +57,6 @@ impl Config {
 
     pub fn dockerfile(&self) -> Option<String> {
         self.build.clone().and_then(|b| b.dockerfile)
-    }
-
-    pub fn docker_compose_file(&self) -> Option<String> {
-        self.docker_compose_file.clone()
     }
 
     pub fn build_args(&self) -> HashMap<String, String> {
@@ -124,8 +120,8 @@ impl Config {
         !matches!(self.shutdown_action, ShutdownAction::None)
     }
 
-    pub fn is_docker(&self) -> bool {
-        self.docker_compose_file.is_none()
+    pub fn is_compose(&self) -> bool {
+        self.docker_compose_file.is_some()
     }
 }
 

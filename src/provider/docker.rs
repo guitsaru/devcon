@@ -37,7 +37,7 @@ impl Provider for Docker {
             command.arg("--build-arg").arg(format!("{}={}", key, value));
         }
 
-        command.arg(".");
+        command.arg(&self.directory);
 
         print_command(&command);
 
@@ -55,12 +55,17 @@ impl Provider for Docker {
             &self.directory, &self.workspace_folder
         ));
 
-        command.arg("-it");
-
         for arg in &self.run_args {
             command.arg(arg);
         }
 
+        command.arg("-it");
+        command.arg("--name");
+        command.arg(&self.name);
+        command.arg("-u");
+        command.arg(&self.user);
+        command.arg("-w");
+        command.arg(&self.workspace_folder);
         command.arg(tag);
         command.arg("zsh");
 
@@ -109,7 +114,7 @@ impl Provider for Docker {
 
     fn rm(&self) -> Result<bool> {
         let mut command = Command::new(&self.command);
-        command.arg("attach").arg(&self.name);
+        command.arg("rm").arg(&self.name);
 
         print_command(&command);
 

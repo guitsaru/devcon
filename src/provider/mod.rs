@@ -1,5 +1,7 @@
 pub(crate) mod docker;
+pub(crate) mod docker_compose;
 pub(crate) mod podman;
+pub(crate) mod podman_compose;
 
 use colored::Colorize;
 use std::io::Result;
