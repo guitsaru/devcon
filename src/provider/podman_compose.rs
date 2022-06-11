@@ -9,6 +9,7 @@ use super::Provider;
 pub struct PodmanCompose {
     pub build_args: HashMap<String, String>,
     pub command: String,
+    pub podman_command: String,
     pub directory: String,
     pub file: String,
     pub name: String,
@@ -142,13 +143,13 @@ impl Provider for PodmanCompose {
     }
 
     fn running(&self) -> Result<bool> {
-        let output = Command::new(&self.command)
-            .arg("-f")
-            .arg(&self.file)
-            .arg("-p")
-            .arg(&self.name)
+        let output = Command::new(&self.podman_command)
             .arg("ps")
             .arg("-q")
+            .arg("--format")
+            .arg("{{.ID}}")
+            .arg("--filter")
+            .arg(format!("label=io.podman.compose.project={}", &self.name))
             .output()?
             .stdout;
 

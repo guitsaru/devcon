@@ -187,6 +187,7 @@ fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> 
                     command: "podman-compose".to_string(),
                     file: composefile.to_str().unwrap().to_string(),
                     name: config.safe_name(),
+                    podman_command: "podman".to_string(),
                     run_args: config.run_args.clone(),
                     service: config.service.as_ref().unwrap().to_string(),
                     user: config.remote_user.clone(),
