@@ -54,6 +54,8 @@ impl Provider for Podman {
         let mut command = Command::new(&self.command);
         command.arg("create");
         command.arg("--userns=keep-id");
+        command.arg("--security-opt");
+        command.arg("label=disable");
         command.arg("--mount");
         command.arg(format!(
             "type=bind,source={},target={}",
