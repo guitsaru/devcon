@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 enum ShutdownAction {
     None,
     StopContainer,
@@ -15,7 +15,7 @@ impl Default for ShutdownAction {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     name: String,
@@ -28,7 +28,7 @@ pub struct Config {
     #[serde(default = "default_remote_user")]
     pub remote_user: String,
     #[serde(default)]
-    run_args: Vec<String>,
+    pub run_args: Vec<String>,
     #[serde(default)]
     remote_env: HashMap<String, String>,
     docker_compose_file: Option<String>,
