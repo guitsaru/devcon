@@ -101,19 +101,13 @@ impl Provider for DockerCompose {
             .arg(&self.file)
             .arg("-p")
             .arg(&self.name)
-            .arg("run")
+            .arg("exec")
             .arg("-u")
             .arg(&self.user)
             .arg("-w")
             .arg(&self.workspace_folder);
 
-        for port in &self.forward_ports {
-            command.arg("-p").arg(format!("{}:{}", port, port));
-        }
-
-        command
-            .arg(&self.service)
-            .arg("zsh");
+        command.arg(&self.service).arg("zsh");
 
         print_command(&command);
 
@@ -164,6 +158,7 @@ impl Provider for DockerCompose {
             .arg(&self.name)
             .arg("ps")
             .arg("-q")
+            .arg("--status=running")
             .output()?
             .stdout;
 
