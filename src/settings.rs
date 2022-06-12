@@ -2,9 +2,24 @@ extern crate directories;
 use directories::ProjectDirs;
 use serde::Deserialize;
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Provider {
+    Docker,
+    Podman,
+}
+
+impl Default for Provider {
+    fn default() -> Self {
+        Self::Docker
+    }
+}
+
 #[derive(Debug, Default, Deserialize)]
 pub struct Settings {
     pub dotfiles: Vec<String>,
+    #[serde(default)]
+    pub provider: Provider,
 }
 
 impl Settings {
