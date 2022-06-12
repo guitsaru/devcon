@@ -3,8 +3,6 @@ use clap::Subcommand;
 
 pub(crate) mod commands;
 pub(crate) mod devcontainers;
-pub(crate) mod docker;
-pub(crate) mod docker_compose;
 pub(crate) mod provider;
 pub(crate) mod settings;
 

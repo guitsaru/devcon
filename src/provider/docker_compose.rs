@@ -12,6 +12,7 @@ pub struct DockerCompose {
     pub directory: String,
     pub file: String,
     pub name: String,
+    pub forward_ports: Vec<u16>,
     pub run_args: Vec<String>,
     pub service: String,
     pub user: String,
@@ -100,11 +101,17 @@ impl Provider for DockerCompose {
             .arg(&self.file)
             .arg("-p")
             .arg(&self.name)
-            .arg("exec")
+            .arg("run")
             .arg("-u")
             .arg(&self.user)
             .arg("-w")
-            .arg(&self.workspace_folder)
+            .arg(&self.workspace_folder);
+
+        for port in &self.forward_ports {
+            command.arg("-p").arg(format!("{}:{}", port, port));
+        }
+
+        command
             .arg(&self.service)
             .arg("zsh");
 
@@ -175,7 +182,7 @@ impl Provider for DockerCompose {
             .arg(&self.name)
             .arg("cp")
             .arg(source)
-            .arg(format!("{}:{}", &self.name, destination));
+            .arg(format!("{}:{}", &self.service, destination));
 
         print_command(&command);
 

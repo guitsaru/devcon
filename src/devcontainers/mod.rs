@@ -178,6 +178,7 @@ fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> 
                     command: "docker".to_string(),
                     file: composefile.to_str().unwrap().to_string(),
                     name: config.safe_name(),
+                    forward_ports: config.forward_ports.clone(),
                     run_args: config.run_args.clone(),
                     service: config.service.as_ref().unwrap().to_string(),
                     user: config.remote_user.clone(),
@@ -235,6 +236,5 @@ fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> 
                 })
             }
         }
-        _ => unimplemented!(),
     }
 }
