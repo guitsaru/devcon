@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  {service}:
+    environment:
+    {{ for env in envs }}
+      - {env.source}={env.dest}
+    {{ endfor}}
+
+    volumes:
+    {{ for volume in volumes }}
+      - {volume.source}:{volume.dest}
+    {{ endfor}}

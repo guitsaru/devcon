@@ -141,12 +141,6 @@ impl Devcontainer {
     pub fn create_args(&self) -> Vec<String> {
         let mut args = vec![];
 
-        for port in &self.config.forward_ports {
-            args.push("-p".to_string());
-            let ports = format!("{}:{}", port, port);
-            args.push(ports);
-        }
-
         for (key, value) in &self.config.remote_env {
             args.push("-e".to_string());
             args.push(format!("{}={}", key, value));
@@ -154,7 +148,7 @@ impl Devcontainer {
 
         let workspace_folder = self.config.workspace_folder.clone();
         args.push("-w".to_string());
-        args.push(workspace_folder.clone());
+        args.push(workspace_folder);
 
         for arg in self.config.run_args.clone() {
             args.push(arg);
@@ -164,7 +158,7 @@ impl Devcontainer {
     }
 }
 
-fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> Box<dyn Provider> {
+fn build_provider(directory: &Path, settings: &Settings, config: &Config) -> Box<dyn Provider> {
     match settings.provider {
         crate::settings::Provider::Docker => {
             if config.is_compose() {
@@ -194,6 +188,7 @@ fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> 
                     directory: directory.to_str().map(|d| d.to_string()).unwrap(),
                     command: "docker".to_string(),
                     file: dockerfile.to_str().unwrap().to_string(),
+                    forward_ports: config.forward_ports.clone(),
                     name: config.safe_name(),
                     run_args: config.run_args.clone(),
                     user: config.remote_user.clone(),
@@ -212,6 +207,7 @@ fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> 
                     directory: directory.to_str().map(|d| d.to_string()).unwrap(),
                     command: "podman-compose".to_string(),
                     file: composefile.to_str().unwrap().to_string(),
+                    forward_ports: config.forward_ports.clone(),
                     name: config.safe_name(),
                     podman_command: "podman".to_string(),
                     run_args: config.run_args.clone(),
@@ -229,6 +225,7 @@ fn build_provider(directory: &PathBuf, settings: &Settings, config: &Config) -> 
                     directory: directory.to_str().map(|d| d.to_string()).unwrap(),
                     command: "podman".to_string(),
                     file: dockerfile.to_str().unwrap().to_string(),
+                    forward_ports: config.forward_ports.clone(),
                     name: config.safe_name(),
                     run_args: config.run_args.clone(),
                     user: config.remote_user.clone(),
