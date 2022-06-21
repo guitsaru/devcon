@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::io::Result;
 use std::process::Command;
 
@@ -11,6 +12,7 @@ pub struct Docker {
     pub command: String,
     pub directory: String,
     pub file: String,
+    pub forward_ports: Vec<u16>,
     pub name: String,
     pub run_args: Vec<String>,
     pub user: String,
@@ -54,6 +56,18 @@ impl Provider for Docker {
             "type=bind,source={},target={}",
             &self.directory, &self.workspace_folder
         ));
+
+        // Forwards the ssh-agent to the container
+        if let Ok(ssh_auth_sock) = env::var("SSH_AUTH_SOCK") {
+            command.arg("--volume");
+            command.arg(format!("{}:/ssh-agent", ssh_auth_sock));
+            command.arg("--env");
+            command.arg("SSH_AUTH_SOCK=/ssh-agent");
+        }
+
+        for port in &self.forward_ports {
+            command.arg("--publish").arg(format!("{}:{}", port, port));
+        }
 
         for arg in &args {
             command.arg(arg);
